@@ -9,40 +9,57 @@ const Contact: FC = () => {
     email: '',
     message: '',
   });
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const validateForm = (data: Record<string, string>): string | null => {
-    const { name, email, message } = data;
-    if (!name || !email || !message) {
-      return 'All fields are required.';
+  const validateField = (name: string, value: string): string => {
+    switch (name) {
+      case 'name':
+        if (!value.trim()) return 'Name is required.';
+        break;
+      case 'email':
+        if (!value.trim()) return 'Email is required.';
+        if (!/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(value)) return 'Email is not valid.';
+        break;
+      case 'message':
+        if (!value.trim()) return 'Message is required.';
+        if (value.length < 20) return 'Message must be at least 20 characters long.';
+        break;
+      default:
+        break;
     }
-    if (!/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(email)) {
-      return 'Email is not valid.';
-    }
-    if (message.length < 20) {
-      return 'Message must be at least 20 characters long.';
-    }
-    return null;
-  }
+    return '';
+  };
+
+  const validateForm = (data: Record<string, string>): { [key: string]: string } => {
+    const errors: { [key: string]: string } = {};
+    Object.entries(data).forEach(([key, value]) => {
+      const error = validateField(key, value);
+      if (error) errors[key] = error;
+    });
+    return errors;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+  };
 
   const onSubmitForm = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-
-    const validationError = validateForm(formData);
-    if (validationError) {
+    const errors = validateForm(formData);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
       setStatus('error');
-      setError(validationError);
+      setError('Please fix the errors above.');
       return;
     }
-
     try {
       setStatus('pending');
       setError(null);
-
-      const formObject: Record<string, string> = formData;
-      formObject['form-name'] = 'contact';
-
+      const formObject: Record<string, string> = { ...formData, 'form-name': 'contact' };
       const res = await fetch(
         "/_forms.html",
         {
@@ -51,14 +68,16 @@ const Contact: FC = () => {
           body: new URLSearchParams(formObject).toString(),
         }
       );
-
       if (res.status === 200) {
         setStatus('ok');
+        setFormData({ name: '', email: '', message: '' });
+        setFormErrors({});
       } else {
         setStatus('error');
         setError(`${res.status} ${res.statusText}`);
       }
     } catch (error) {
+      setStatus('error');
       setError(`${error}`);
     }
   };
@@ -80,7 +99,6 @@ const Contact: FC = () => {
         onSubmit={onSubmitForm}
       >
         <input type='hidden' name='form-name' value='contact' />
-
         <div className='mb-5'>
           <label
             htmlFor='name'
@@ -88,17 +106,16 @@ const Contact: FC = () => {
           >
             Your Name
           </label>
-
           <input
             type='text'
             name='name'
             placeholder='Full Name'
             value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            onChange={handleChange}
             className='w-full rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
           />
+          {formErrors.name && <div className='text-red-500 text-sm mt-1'>{formErrors.name}</div>}
         </div>
-
         <div className='mb-5'>
           <label
             htmlFor='email'
@@ -106,17 +123,16 @@ const Contact: FC = () => {
           >
             Email Address
           </label>
-
           <input
             type='email'
             name='email'
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={handleChange}
             placeholder='example@domain.com'
             className='w-full rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
           />
+          {formErrors.email && <div className='text-red-500 text-sm mt-1'>{formErrors.email}</div>}
         </div>
-
         <div className='mb-5'>
           <label
             htmlFor='message'
@@ -124,17 +140,16 @@ const Contact: FC = () => {
           >
             Message
           </label>
-
           <textarea
             name='message'
             value={formData.message}
-            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+            onChange={handleChange}
             rows={4}
             placeholder='Type your message'
             className='w-full resize-none rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
           ></textarea>
+          {formErrors.message && <div className='text-red-500 text-sm mt-1'>{formErrors.message}</div>}
         </div>
-
         <div className='flex justify-center'>
           <button
             className='hover:shadow-lg hover:bg-blue-600 transform hover:scale-105 transition duration-300 rounded-md bg-blue-500 py-3 px-8 text-base font-semibold text-white outline-none'
@@ -143,7 +158,6 @@ const Contact: FC = () => {
             Submit
           </button>
         </div>
-
         {status === 'pending' && (
           <div className='mt-5 text-sm text-gray-600'>
             Please wait...
