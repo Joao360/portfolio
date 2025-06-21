@@ -4,22 +4,45 @@ import { FC, useState } from 'react';
 import { Alert } from './Alert';
 
 const Contact: FC = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    message: '',
+  });
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const validateForm = (data: Record<string, string>): string | null => {
+    const { name, email, message } = data;
+    if (!name || !email || !message) {
+      return 'All fields are required.';
+    }
+    if (!/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(email)) {
+      return 'Email is not valid.';
+    }
+    if (message.length < 20) {
+      return 'Message must be at least 20 characters long.';
+    }
+    return null;
+  }
 
   const onSubmitForm = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
 
+    const validationError = validateForm(formData);
+    if (validationError) {
+      setStatus('error');
+      setError(validationError);
+      return;
+    }
+
     try {
       setStatus('pending');
       setError(null);
-      
-      const formObject: Record<string, string> = {};
-      const formData = new FormData(event.currentTarget);
-      formData.forEach((value, key) => {
-        formObject[key] = value.toString();
-      });
-      
+
+      const formObject: Record<string, string> = formData;
+      formObject['form-name'] = 'contact';
+
       const res = await fetch(
         "/_forms.html",
         {
@@ -70,6 +93,8 @@ const Contact: FC = () => {
             type='text'
             name='name'
             placeholder='Full Name'
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className='w-full rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
           />
         </div>
@@ -85,6 +110,8 @@ const Contact: FC = () => {
           <input
             type='email'
             name='email'
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             placeholder='example@domain.com'
             className='w-full rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
           />
@@ -100,6 +127,8 @@ const Contact: FC = () => {
 
           <textarea
             name='message'
+            value={formData.message}
+            onChange={(e) => setFormData({ ...formData, message: e.target.value })}
             rows={4}
             placeholder='Type your message'
             className='w-full resize-none rounded-md border border-gray-300 bg-white py-3 px-6 text-base font-medium text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition duration-200'
