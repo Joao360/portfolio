@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useState } from 'react';
+import { FC, useRef, useState } from 'react';
 import { Alert } from './Alert';
 
 const Contact: FC = () => {
@@ -12,6 +12,12 @@ const Contact: FC = () => {
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const debounceRefs = useRef<{ [key: string]: NodeJS.Timeout | null }>({
+    name: null,
+    email: null,
+    message: null,
+  });
 
   const validateField = (name: string, value: string): string => {
     switch (name) {
@@ -44,7 +50,21 @@ const Contact: FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setFormErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    setFormErrors((prev) => ({ ...prev, [name]: '' }));
+
+    if (debounceRefs.current[name]) {
+      clearTimeout(debounceRefs.current[name]!);
+    }
+    const debounceMillis = 800;
+    debounceRefs.current[name] = setTimeout(
+      () => {
+        setFormErrors((prev) => ({
+          ...prev,
+          [name]: validateField(name, value),
+        }));
+      },
+      debounceMillis
+    );
   };
 
   const onSubmitForm = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
